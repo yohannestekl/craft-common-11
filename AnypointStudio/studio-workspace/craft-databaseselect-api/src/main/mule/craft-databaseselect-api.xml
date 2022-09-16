@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="craft-databaseselect-apiFlow" doc:id="beec94ac-99f5-48f5-bad5-8c0db8279ca7" >
+		<http:listener doc:name="Listener" doc:id="f0889066-1bef-4689-a97e-83ad6e09091f" config-ref="HTTP_Listener_config" path="/get_products"/>
+		<db:select doc:name="Select" doc:id="8a14d06d-5136-4ec5-b301-6cc22005847a" config-ref="Database_Config1">
+			<db:sql ><![CDATA[SELECT * FROM products;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="dd56677e-89d5-4e5e-9b75-d18a36148845" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="craft-databaseselect-apiFlow1" doc:id="dc0bd6b8-cc88-464c-8689-a1c250934806" >
+		<http:listener doc:name="Listener" doc:id="4e64d12c-6dee-40c6-88cb-659a2f999fea" config-ref="HTTP_Listener_config" path="/post_products"/>
+		<db:insert doc:name="Insert" doc:id="7a4b7db0-d49a-4445-bd54-3c26253fa214" config-ref="Database_Config1">
+			<db:sql ><![CDATA[insert into products (productid, categoryid, name, description, video_url, price) 
+
+values (:productid, :categoryid, :name, :description, :video_url, :price);]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+productid: payload.productid,
+name: payload.name,
+categoryid: payload.categoryid,
+description: payload.description,
+video_url: payload.video_url,
+price: payload.price	
+}]]]></db:input-parameters>
+		</db:insert>
+		<set-payload value="done" doc:name="confirmation" doc:id="4f137d31-2e55-436f-950d-9cd0156482fe" />
+	</flow>
+	<flow name="craft-databaseselect-apiFlow2" doc:id="ae3d3214-49f9-4604-896a-56a985d6ce49" >
+		<http:listener doc:name="Listener" doc:id="42785760-47a6-40ab-9502-57ed3a4d4b90" config-ref="HTTP_Listener_config" path="/post_update"/>
+		<db:update doc:name="Update" doc:id="c0c29b39-86d6-4e9b-ac73-f071a4755402" config-ref="Database_Config1">
+			<db:sql ><![CDATA[update products set categoryid = :categoryid, name = :name ,description = :description,video_url = :video_url,price = :price 
+
+where  productid = :productid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+productid: payload.productid,
+name: payload.name,
+categoryid: payload.categoryid,
+description: payload.description,
+video_url: payload.video_url,
+price: payload.price	
+}]]]></db:input-parameters>
+		</db:update>
+		<set-payload value="Updated" doc:name="Update Confirmation" doc:id="6a92ad89-6cb0-4b77-b64c-f3527debc29d" />
+	</flow>
+	<flow name="craft-databaseselect-apiFlow3" doc:id="93874fbf-b288-4681-a687-b8347f07e937" >
+		<http:listener doc:name="/Post" doc:id="d5ca8893-a97c-4fdf-8f6c-6497d4f34357" config-ref="HTTP_Listener_config" path="/delete_post/{productid}"/>
+		<db:delete doc:name="Delete" doc:id="ebd30d37-c144-4c16-996b-6fa95c218af4" config-ref="Database_Config1">
+			<db:sql ><![CDATA[delete from products where productid =: productid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	productid: attributes.uriParams.productid
+}]]]></db:input-parameters>
+		</db:delete>
+		<set-payload value="Deleted" doc:name="Delete Confirmation" doc:id="42a86be7-b00f-4ac6-a919-ec9fac1eadce" />
+	</flow>
+	<flow name="craft-databaseselect-apiFlow4" doc:id="9fc0cb8c-0308-4c99-83bb-bd92e352084d" >
+		<http:listener doc:name="Listener" doc:id="f805ee57-bd27-4ba2-a72e-edf6fa6e783c" config-ref="HTTP_Listener_config" path="/Bulk_Insertion"/>
+		<db:bulk-insert doc:name="Bulk insert" doc:id="18f1ba93-3239-4ee0-9c7e-f81437f82e13" config-ref="Database_Config1">
+			<db:bulk-input-parameters ><![CDATA[#[payload map (value, index)-> {
+	productid: value.productid,
+	categoryid: value.categoryid,
+	name: value.name,
+	description: value.description,
+	video_url: value.video_url,
+	price: value.price
+	
+}]]]></db:bulk-input-parameters>
+			<db:sql ><![CDATA[
+
+insert into products (productid, categoryid, name, description, video_url, price) 
+
+values (:productid, :categoryid, :name, :description, :video_url, :price);]]></db:sql>
+		</db:bulk-insert>
+		<set-payload value="Inserted" doc:name="Set Payload" doc:id="cb2f8204-0677-400d-a3c1-3b760a73d939" />
+	</flow>
+	<flow name="craft-databaseselect-apiFlow5" doc:id="30a72448-42e0-4e1b-ad79-e4a2e91e72f8" >
+		<http:listener doc:name="Listener" doc:id="19fef672-da7d-4d51-b623-a94b4839c684" config-ref="HTTP_Listener_config" path="/Bulk_update"/>
+		<db:bulk-update doc:name="Bulk update" doc:id="6d75b7ac-70df-4b58-a8ef-a4b3ddab279a" >
+			<db:bulk-input-parameters ><![CDATA[#[payload map (value , index) -> {
+	productid: value.productid,
+	categoryid: value.categoryid,
+	name: value.name,
+	description: value.description,
+	video_url: value.video_url,
+	price: value.price
+	
+}]]]></db:bulk-input-parameters>
+			<db:sql ><![CDATA[update products set categoryid = :categoryid, name = :name ,description = :description,video_url = :video_url,price = :price 
+
+where  productid = :productid]]></db:sql>
+		</db:bulk-update>
+		<set-payload value="Updated" doc:name="Set Payload" doc:id="dc84d1d5-18f8-4ac9-b9a8-b062a2348bd2" />
+	</flow>
+
+</mule>
